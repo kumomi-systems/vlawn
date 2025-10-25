@@ -191,9 +191,12 @@ impl App {
             .unwrap();
 
         match std::env::args().nth(1) {
-            Some(addr) => {
-                let ip_addr = IpAddr::from_str(&addr).unwrap();
-                self.events_tx.send(OurEvent::JoinSend(ip_addr)).unwrap();
+            Some(host) => {
+                // let ip_addr = IpAddr::from_str(&addr).unwrap();
+                let mut ips = dns_lookup::lookup_host(&host).unwrap();
+                self.events_tx
+                    .send(OurEvent::JoinSend(ips.nth(0).unwrap()))
+                    .unwrap();
             }
             _ => {
                 self.events_tx.send(OurEvent::StartRoom).unwrap();
