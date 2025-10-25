@@ -1,10 +1,8 @@
-use std::net::IpAddr;
-
 use serde::{Deserialize, Serialize};
 
-use super::{Hierarchy, Peer, Room};
+use super::{Peer, Room};
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Message {
     pub payload: Payload,
 }
@@ -15,11 +13,15 @@ impl Message {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub enum Payload {
-    Text(String),
+    Forward(Peer, ForwardPayload),
     JoinReq(Peer),
-    JoinNotify(Peer, Hierarchy),
-    LeaveNotify(Peer, Hierarchy),
     Sync(Room),
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub enum ForwardPayload {
+    Text(String),
+    Notification(String),
 }

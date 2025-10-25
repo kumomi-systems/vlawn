@@ -4,12 +4,11 @@ use ws::Sender;
 
 use super::Message;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Event {
     /// A connection to a peer has closed
     Closed(u32),
 
-    Timeout,
     Message(Message, u32),
 
     Open(Sender),

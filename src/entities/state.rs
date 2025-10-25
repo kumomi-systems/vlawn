@@ -4,12 +4,15 @@ use crossbeam_channel::Sender as ChSender;
 use postcard::to_allocvec;
 use ws::{connect, Sender as WsSender};
 
+use crate::entities::{peer, ForwardPayload};
+
 use super::{Event, Handler, Message, Payload, Peer, Room};
 
 pub struct StateManager {
     state: State,
     peer: Peer,
     events_tx: ChSender<Event>,
+    history: Vec<(Peer, ForwardPayload)>,
 }
 
 impl StateManager {
@@ -18,6 +21,7 @@ impl StateManager {
             state: State::Initial,
             peer: Peer::get_local(),
             events_tx,
+            history: Vec::new(),
         }
     }
 
@@ -55,8 +59,7 @@ impl StateManager {
                 }
                 _ => panic!(),
             },
-            (State::Admin(state), Event::Message(msg, con_id)) => match msg.payload {
-                Payload::Text(str) => println!("{str}"),
+            (State::Admin(state), Event::Message(msg, con_id)) => match &msg.payload {
                 Payload::JoinReq(peer) => {
                     state.room.hierarchy.push(peer.clone());
                     let msg = Message::new(Payload::Sync(state.room.clone()));
@@ -68,7 +71,14 @@ impl StateManager {
                         .unwrap()
                         .send(msg_vec)
                         .unwrap();
-                    state.peers.insert(con_id, peer);
+                    state.peers.insert(con_id, peer.clone());
+                }
+                Payload::Forward(peer, payload) => {
+                    self.history.push((peer.clone(), payload.clone()));
+                    let msg_vec = to_allocvec(&(msg.clone())).unwrap();
+                    state.clients.iter().for_each(|c| {
+                        c.send(msg_vec.clone()).unwrap();
+                    });
                 }
                 _ => todo!(),
             },
@@ -119,6 +129,7 @@ impl StateManager {
                     log::info!("resyncing state...");
                     state.room = room
                 }
+                Payload::Forward(peer, payload) => self.history.push((peer, payload)),
                 _ => panic!(),
             },
             (_, evt) => log::error!("No transition for ({:?}, {evt:?})", self.state),
