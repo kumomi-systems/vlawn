@@ -29,10 +29,23 @@ impl StateManager {
                     let msg_vec = to_allocvec(&msg).unwrap();
                     out.send(msg_vec).unwrap();
 
+                    self.events_tx.send(Event::Open(out.clone())).unwrap();
+
                     Handler::new(self.events_tx.clone(), out.connection_id())
                 })
                 .unwrap();
-                // self.state = State::Member(MemberState::new())
+            }
+            (State::Connect(state), Event::Message(msg, _con_id)) => match msg.payload {
+                Payload::Sync(room) => {
+                    self.state = State::Member(MemberState {
+                        room,
+                        admin: state.admin.clone(),
+                    })
+                }
+                _ => panic!(),
+            },
+            (State::Initial, Event::Open(sender)) => {
+                self.state = State::Connect(ConnectState { admin: sender });
             }
             (State::Admin(state), Event::Message(msg, con_id)) => match msg.payload {
                 Payload::Text(str) => println!("{str}"),
@@ -98,7 +111,9 @@ pub enum State {
 pub struct DiscoverState {}
 
 #[derive(Debug, Clone)]
-pub struct ConnectState {}
+pub struct ConnectState {
+    admin: WsSender,
+}
 
 #[derive(Debug, Clone)]
 pub struct AdminState {
