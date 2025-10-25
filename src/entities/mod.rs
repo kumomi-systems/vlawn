@@ -25,7 +25,7 @@ impl Hierarchy {
     }
 
     pub fn next_leader(&mut self) -> Option<&Peer> {
-        self.0.pop();
+        self.0.remove(0);
         self.0.first()
     }
 }

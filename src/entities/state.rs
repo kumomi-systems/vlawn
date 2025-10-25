@@ -77,8 +77,11 @@ impl StateManager {
             }
             (State::Member(state), Event::Closed(con_id)) => {
                 if state.admin.connection_id() == con_id {
+                    log::info!("{:?}", state.room.hierarchy);
+
                     let new_admin = state.room.hierarchy.next_leader().unwrap();
                     let endpoint = format!("ws://{}:57185", new_admin.addr());
+
                     if *new_admin == self.peer {
                         log::info!("Promoting self to admin");
                         self.state = State::Admin(AdminState {
