@@ -1,9 +1,12 @@
 use super::{Counter, Event, Hierarchy, Message};
 
 pub enum State {
-    Admin(AdminState),
-    Listen(ListenState),
+    Initial,
     Discover(DiscoverState),
+    Connect(ConnectState),
+    Admin(AdminState),
+    Member(MemberState),
+    Leaving,
 }
 
 impl State {
@@ -11,6 +14,10 @@ impl State {
         todo!()
     }
 }
+
+pub struct DiscoverState {}
+
+pub struct ConnectState {}
 
 pub struct AdminState {
     /// Keeps messages ordered
@@ -20,11 +27,9 @@ pub struct AdminState {
     // listeners: Vec<Sender<Message>>,
 }
 
-pub struct ListenState {
+pub struct MemberState {
     /// Kept in sync with admin in case this becomes an admin
     counter: Counter,
 
     hierarchy: Hierarchy,
 }
-
-pub struct DiscoverState {}
