@@ -2,6 +2,8 @@ use std::net::IpAddr;
 
 use ws::Sender;
 
+use crate::entities::ForwardPayload;
+
 use super::Message;
 
 #[derive(Debug, Clone)]
@@ -13,6 +15,7 @@ pub enum Event {
 
     Open(Sender),
     JoinSend(IpAddr),
+    SubmitMessage(ForwardPayload),
 
     StartRoom,
 }

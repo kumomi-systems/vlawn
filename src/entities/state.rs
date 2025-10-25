@@ -57,7 +57,7 @@ impl StateManager {
                     });
                     log::info!("Joined room!")
                 }
-                _ => panic!(),
+                payload => log::warn!("No transition for ({:?}, {payload:?})", self.state),
             },
             (State::Admin(state), Event::Message(msg, con_id)) => match &msg.payload {
                 Payload::JoinReq(peer) => {
@@ -80,7 +80,7 @@ impl StateManager {
                         c.send(msg_vec.clone()).unwrap();
                     });
                 }
-                _ => todo!(),
+                payload => log::warn!("No transition for ({:?}, {payload:?})", self.state),
             },
             (State::Admin(state), Event::Open(sender)) => {
                 state.clients.push(sender);
@@ -96,6 +96,20 @@ impl StateManager {
                     .clients
                     .iter()
                     .for_each(|s| s.send(msg_vec.clone()).unwrap());
+            }
+            (State::Admin(state), Event::SubmitMessage(payload)) => {
+                self.history.push((self.peer.clone(), payload.clone()));
+                let msg = Message::new(Payload::Forward(self.peer.clone(), payload));
+                let msg_vec = to_allocvec(&msg).unwrap();
+                state
+                    .clients
+                    .iter()
+                    .for_each(|s| s.send(msg_vec.clone()).unwrap());
+            }
+            (State::Member(state), Event::SubmitMessage(payload)) => {
+                let msg = Message::new(Payload::Forward(self.peer.clone(), payload));
+                let msg_vec = to_allocvec(&msg).unwrap();
+                state.admin.send(msg_vec).unwrap();
             }
             (State::Member(state), Event::Closed(con_id)) => {
                 if state.admin.connection_id() == con_id {
@@ -130,9 +144,9 @@ impl StateManager {
                     state.room = room
                 }
                 Payload::Forward(peer, payload) => self.history.push((peer, payload)),
-                _ => panic!(),
+                payload => log::warn!("No transition for ({:?}, {payload:?})", self.state),
             },
-            (_, evt) => log::error!("No transition for ({:?}, {evt:?})", self.state),
+            (_, evt) => log::warn!("No transition for ({:?}, {evt:?})", self.state),
         };
     }
 }
