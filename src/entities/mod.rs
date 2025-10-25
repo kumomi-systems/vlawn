@@ -12,7 +12,7 @@ pub use state::*;
 
 use serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct Hierarchy(Vec<Peer>);
 
 pub type Counter = u64;
