@@ -23,7 +23,9 @@ impl StateManager {
         match (&self.state, event) {
             (State::Initial, Event::StartRoom) => self.state = State::Admin(AdminState::new()),
             (State::Initial, Event::JoinSend(addr)) => {
-                connect(format!("ws://{addr}:5432"), |out| {
+                let endpoint = format!("ws://{addr}:57185");
+                println!("join: {endpoint}");
+                connect(endpoint, |out| {
                     let msg = Message::new(Payload::JoinReq(self.peer.clone()), 0);
                     let msg_vec = to_allocvec(&msg).unwrap();
                     out.send(msg_vec.as_slice()).unwrap();
