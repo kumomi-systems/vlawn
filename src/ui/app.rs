@@ -11,7 +11,7 @@ use ratatui::{
     style::{Color, Modifier, Style, Stylize},
     symbols,
     text::{Line, Span, Text},
-    widgets::{Block, BorderType, Borders, List, ListItem, Paragraph},
+    widgets::{Block, BorderType, List, ListItem, Paragraph},
     DefaultTerminal, Frame,
 };
 use ws::listen;
@@ -153,7 +153,8 @@ impl App {
         self.events_tx
             .send(OurEvent::SubmitMessage(ForwardPayload::Text(
                 self.input.clone(),
-            )));
+            )))
+            .unwrap();
         self.input.clear();
         self.reset_cursor();
         // scroll to bottom when a new message is submitted

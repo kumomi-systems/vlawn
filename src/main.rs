@@ -4,16 +4,18 @@ mod ip;
 mod member;
 mod ui;
 
-use simplelog::{Config, TermLogger};
+use std::fs::File;
+
+use simplelog::{Config, WriteLogger};
 
 use color_eyre::Result;
 
 fn main() -> Result<()> {
-    TermLogger::init(
-        simplelog::LevelFilter::Off,
+    let now = chrono::Local::now();
+    WriteLogger::init(
+        log::LevelFilter::Info,
         Config::default(),
-        simplelog::TerminalMode::Mixed,
-        simplelog::ColorChoice::Auto,
+        File::create(format!("{}.log", now.format("%Y%m%y_%H%M%S"))).unwrap(),
     )
     .unwrap();
 
