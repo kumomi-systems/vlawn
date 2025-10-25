@@ -28,6 +28,10 @@ impl Hierarchy {
         self.0.remove(0);
         self.0.first()
     }
+
+    pub fn remove(&mut self, peer: &Peer) {
+        self.0.retain(|f| f != peer);
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]

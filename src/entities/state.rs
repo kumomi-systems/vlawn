@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use crossbeam_channel::Sender as ChSender;
 use postcard::to_allocvec;
 use ws::{connect, Sender as WsSender};
@@ -40,6 +42,9 @@ impl StateManager {
                     })
                     .unwrap();
             }
+            (State::Initial, Event::Open(sender)) => {
+                self.state = State::Connect(ConnectState { admin: sender });
+            }
             (State::Connect(state), Event::Message(msg, _con_id)) => match msg.payload {
                 Payload::Sync(room) => {
                     self.state = State::Member(MemberState {
@@ -50,13 +55,10 @@ impl StateManager {
                 }
                 _ => panic!(),
             },
-            (State::Initial, Event::Open(sender)) => {
-                self.state = State::Connect(ConnectState { admin: sender });
-            }
             (State::Admin(state), Event::Message(msg, con_id)) => match msg.payload {
                 Payload::Text(str) => println!("{str}"),
                 Payload::JoinReq(peer) => {
-                    state.room.hierarchy.push(peer);
+                    state.room.hierarchy.push(peer.clone());
                     let msg = Message::new(Payload::Sync(state.room.clone()));
                     let msg_vec = to_allocvec(&msg).unwrap();
                     state
@@ -65,7 +67,8 @@ impl StateManager {
                         .find(|t| t.connection_id() == con_id)
                         .unwrap()
                         .send(msg_vec)
-                        .unwrap()
+                        .unwrap();
+                    state.peers.insert(con_id, peer);
                 }
                 _ => todo!(),
             },
@@ -73,7 +76,16 @@ impl StateManager {
                 state.clients.push(sender);
             }
             (State::Admin(state), Event::Closed(con_id)) => {
-                state.clients.retain(|t| t.connection_id() != con_id)
+                let closed_peer = state.peers.remove(&con_id).unwrap();
+                state.room.hierarchy.remove(&closed_peer);
+                state.clients.retain(|c| c.connection_id() != con_id);
+
+                let msg = Message::new(Payload::Sync(state.room.clone()));
+                let msg_vec = to_allocvec(&msg).unwrap();
+                state
+                    .clients
+                    .iter()
+                    .for_each(|s| s.send(msg_vec.clone()).unwrap());
             }
             (State::Member(state), Event::Closed(con_id)) => {
                 if state.admin.connection_id() == con_id {
@@ -87,6 +99,7 @@ impl StateManager {
                         self.state = State::Admin(AdminState {
                             room: state.room.clone(),
                             clients: Vec::new(),
+                            peers: HashMap::new(),
                         })
                     } else {
                         log::info!("Connecting to new admin @ {}", new_admin.addr());
@@ -101,6 +114,13 @@ impl StateManager {
                     }
                 }
             }
+            (State::Member(state), Event::Message(msg, _con_id)) => match msg.payload {
+                Payload::Sync(room) => {
+                    log::info!("resyncing state...");
+                    state.room = room
+                }
+                _ => panic!(),
+            },
             (_, evt) => log::error!("No transition for ({:?}, {evt:?})", self.state),
         };
     }
@@ -128,6 +148,7 @@ pub struct ConnectState {
 pub struct AdminState {
     room: Room,
     clients: Vec<WsSender>,
+    peers: HashMap<u32, Peer>,
 }
 
 impl AdminState {
@@ -135,6 +156,7 @@ impl AdminState {
         AdminState {
             room: Room::new(),
             clients: Vec::new(),
+            peers: HashMap::new(),
         }
     }
 }
