@@ -4,9 +4,9 @@ use crossbeam_channel::Sender as ChSender;
 use postcard::to_allocvec;
 use ws::{connect, Sender as WsSender};
 
-use crate::entities::{peer, ForwardPayload};
+use crate::entities::Hierarchy;
 
-use super::{Event, Handler, Message, Payload, Peer, Room};
+use super::{Event, ForwardPayload, Handler, Message, Payload, Peer, Room};
 
 pub struct StateManager {
     state: State,
@@ -22,6 +22,18 @@ impl StateManager {
             peer: Peer::get_local(),
             events_tx,
             history: Vec::new(),
+        }
+    }
+
+    pub fn history(&self) -> &Vec<(Peer, ForwardPayload)> {
+        &self.history
+    }
+
+    pub fn peers(&self) -> Option<&Hierarchy> {
+        match &self.state {
+            State::Admin(state) => Some(&state.room.hierarchy),
+            State::Member(state) => Some(&state.room.hierarchy),
+            _ => None,
         }
     }
 

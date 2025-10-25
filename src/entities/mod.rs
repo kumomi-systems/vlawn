@@ -13,7 +13,7 @@ pub use state::*;
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct Hierarchy(Vec<Peer>);
+pub struct Hierarchy(pub Vec<Peer>);
 
 impl Hierarchy {
     pub fn new() -> Self {

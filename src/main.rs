@@ -2,16 +2,13 @@ mod admin;
 mod entities;
 mod ip;
 mod member;
+mod ui;
 
-use std::{net::IpAddr, str::FromStr};
-
-use crossbeam_channel::unbounded;
 use simplelog::{Config, TermLogger};
-use ws::listen;
 
-use entities::{Event, Handler, StateManager};
+use color_eyre::Result;
 
-fn main() {
+fn main() -> Result<()> {
     TermLogger::init(
         simplelog::LevelFilter::Info,
         Config::default(),
@@ -20,39 +17,9 @@ fn main() {
     )
     .unwrap();
 
-    let (events_tx, events_rx) = unbounded::<Event>();
-    let mut manager = StateManager::new(events_tx.clone());
-
-    let events_tx_clone = events_tx.clone();
-
-    std::thread::Builder::new()
-        .name("websocket server".into())
-        .spawn(move || {
-            log::info!("Websocket server started");
-            listen("0.0.0.0:57185", |out| {
-                log::info!("New connection");
-                let connection_id = out.connection_id();
-                events_tx.send(Event::Open(out)).unwrap();
-                Handler::new(events_tx.clone(), connection_id)
-            })
-            .expect("listener failed");
-        })
-        .unwrap();
-
-    match std::env::args().nth(1) {
-        Some(addr) => {
-            let ip_addr = IpAddr::from_str(&addr).unwrap();
-            events_tx_clone.send(Event::JoinSend(ip_addr)).unwrap();
-        }
-        _ => {
-            events_tx_clone.send(Event::StartRoom).unwrap();
-        }
-    }
-
-    loop {
-        while let Ok(event) = events_rx.recv() {
-            log::info!("Received event: {event:?}");
-            manager.handle(event);
-        }
-    }
+    color_eyre::install()?;
+    let terminal = ratatui::init();
+    let app_result = ui::App::new().run(terminal);
+    ratatui::restore();
+    app_result
 }

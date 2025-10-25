@@ -19,4 +19,8 @@ impl Peer {
     pub fn addr(&self) -> &IpAddr {
         &self.addr
     }
+
+    pub fn username(&self) -> &String {
+        &self.username
+    }
 }
