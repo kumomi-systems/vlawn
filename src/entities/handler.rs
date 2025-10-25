@@ -37,6 +37,5 @@ impl WsHandler for Handler {
         self.events_tx
             .send(Event::Closed(self.connection_id))
             .unwrap();
-        println!("closed peer {:?}: {reason}", self.connection_id);
     }
 }

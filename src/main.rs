@@ -10,7 +10,7 @@ use color_eyre::Result;
 
 fn main() -> Result<()> {
     TermLogger::init(
-        simplelog::LevelFilter::Info,
+        simplelog::LevelFilter::Off,
         Config::default(),
         simplelog::TerminalMode::Mixed,
         simplelog::ColorChoice::Auto,
