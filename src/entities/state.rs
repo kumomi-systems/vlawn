@@ -1,10 +1,12 @@
 use crossbeam_channel::Sender as ChSender;
-// use ws::Sender as WsSender;
+use postcard::to_allocvec;
+use ws::{connect, Sender as WsSender};
 
-use super::{Counter, Event, Hierarchy, Message};
+use super::{Event, Handler, Message, Payload, Peer, Room};
 
 pub struct StateManager {
     state: State,
+    peer: Peer,
     events_tx: ChSender<Event>,
 }
 
@@ -12,15 +14,37 @@ impl StateManager {
     pub fn new(events_tx: ChSender<Event>) -> Self {
         StateManager {
             state: State::Initial,
+            peer: Peer::get_local(),
             events_tx,
         }
     }
 
-    pub fn handle(self, event: Event) -> State {
-        todo!()
+    pub fn handle(&mut self, event: Event) {
+        match (&self.state, event) {
+            (State::Initial, Event::StartRoom) => self.state = State::Admin(AdminState::new()),
+            (State::Initial, Event::JoinSend(addr)) => {
+                connect(format!("ws://{addr}:5432"), |out| {
+                    let msg = Message::new(Payload::JoinReq(self.peer.clone()), 0);
+                    let msg_vec = to_allocvec(&msg).unwrap();
+                    out.send(msg_vec.as_slice()).unwrap();
+
+                    Handler::new(self.events_tx.clone(), out.connection_id())
+                })
+                .unwrap();
+            }
+            (State::Admin(state), Event::Message(msg, con_id)) => match msg.payload {
+                Payload::Text(str) => println!("{str}"),
+                Payload::JoinReq(peer) => {
+                    println!("Join request: {peer:?}")
+                }
+                _ => todo!(),
+            },
+            (_, evt) => println!("No transition for ({:?}, {evt:?})", self.state),
+        };
     }
 }
 
+#[derive(Debug)]
 pub enum State {
     Initial,
     Discover(DiscoverState),
@@ -30,21 +54,29 @@ pub enum State {
     Leaving,
 }
 
+#[derive(Debug)]
 pub struct DiscoverState {}
 
+#[derive(Debug)]
 pub struct ConnectState {}
 
+#[derive(Debug)]
 pub struct AdminState {
-    /// Keeps messages ordered
-    counter: Counter,
-
-    hierarchy: Hierarchy,
-    // listeners: Vec<WsSender>,
+    room: Room,
+    clients: Vec<WsSender>,
 }
 
-pub struct MemberState {
-    /// Kept in sync with admin in case this becomes an admin
-    counter: Counter,
+impl AdminState {
+    pub fn new() -> Self {
+        AdminState {
+            room: Room::new(),
+            clients: Vec::new(),
+        }
+    }
+}
 
-    hierarchy: Hierarchy,
+#[derive(Debug)]
+pub struct MemberState {
+    room: Room,
+    admin: WsSender,
 }

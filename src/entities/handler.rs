@@ -25,12 +25,16 @@ impl WsHandler for Handler {
         };
         let msg: Message = from_bytes(&bin).unwrap();
 
-        self.events_tx.send(Event::Message(msg, self.connection_id));
+        self.events_tx
+            .send(Event::Message(msg, self.connection_id))
+            .unwrap();
         Ok(())
     }
 
     fn on_close(&mut self, _: ws::CloseCode, reason: &str) {
-        self.events_tx.send(Event::Closed(self.connection_id));
+        self.events_tx
+            .send(Event::Closed(self.connection_id))
+            .unwrap();
         println!("closed peer {:?}: {reason}", self.connection_id);
     }
 }

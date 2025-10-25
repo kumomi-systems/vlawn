@@ -1,13 +1,19 @@
+use std::net::IpAddr;
+
 use ws::Sender;
 
 use super::Message;
-use super::Peer;
 
+#[derive(Debug)]
 pub enum Event {
     /// A connection to a peer has closed
     Closed(u32),
 
     Timeout,
     Message(Message, u32),
-    Join(Sender),
+
+    JoinRecv(Sender),
+    JoinSend(IpAddr),
+
+    StartRoom,
 }
