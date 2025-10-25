@@ -1,20 +1,41 @@
 use crossbeam_channel::Sender;
-use ws::{Error, Handler as WsHandler, Message as WsMessage, Result};
+use postcard::from_bytes;
+use ws::{Handler as WsHandler, Message as WsMessage, Result};
 
-use super::{Event, Peer};
+use super::{Event, Message};
 
 pub struct Handler {
-    peer: Peer,
     events_tx: Sender<Event>,
+    connection_id: u32,
+}
+
+impl Handler {
+    pub fn new(events_tx: Sender<Event>, connection_id: u32) -> Self {
+        Handler {
+            events_tx,
+            connection_id,
+        }
+    }
 }
 
 impl WsHandler for Handler {
-    // fn on_message(&mut self, ws_msg: WsMessage) -> Result<()> {
-    //     let WsMessage::Binary(bin) = ws_msg else {
+    fn on_message(&mut self, ws_msg: WsMessage) -> Result<()> {
+        let WsMessage::Binary(bin) = ws_msg else {
+            unimplemented!("Expected binary message");
+        };
 
-    //     }
+        let msg: Message = from_bytes(&bin).unwrap();
+        log::info!("Received message: {msg:?}");
 
-    //     self.events_tx.send(Event::Message(msg, self.peer.clone()));
-    //     Some(())
-    // }
+        self.events_tx
+            .send(Event::Message(msg, self.connection_id))
+            .unwrap();
+        Ok(())
+    }
+
+    fn on_close(&mut self, _: ws::CloseCode, reason: &str) {
+        self.events_tx
+            .send(Event::Closed(self.connection_id))
+            .unwrap();
+    }
 }

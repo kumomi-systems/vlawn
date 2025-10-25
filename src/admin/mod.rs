@@ -1,1 +1,1 @@
-mod room;
+pub mod room;

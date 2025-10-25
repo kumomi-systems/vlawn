@@ -1,18 +1,27 @@
 use serde::{Deserialize, Serialize};
 
-use super::{Counter, Hierarchy, Peer};
+use super::{Peer, Room};
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Message {
-    pub counter: Counter,
     pub payload: Payload,
 }
 
-#[derive(Serialize, Deserialize)]
+impl Message {
+    pub fn new(payload: Payload) -> Self {
+        Message { payload }
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub enum Payload {
+    Forward(Peer, ForwardPayload),
+    JoinReq(Peer),
+    Sync(Room),
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub enum ForwardPayload {
     Text(String),
-    // File(String, String),
-    JoinNotify(Peer, Hierarchy),
-    LeaveNotify(Peer, Hierarchy),
-    Sync(Hierarchy),
+    Notification(String),
 }
