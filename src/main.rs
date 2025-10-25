@@ -2,13 +2,14 @@ mod admin;
 mod entities;
 mod ip;
 mod member;
+mod ui;
 
-use crossbeam_channel::unbounded;
-use ws::listen;
+use color_eyre::Result;
 
-use entities::{Event, Handler};
-
-fn main() {
-    let (events_tx, events_rx) = unbounded::<Event>();
-    listen("localhost:5432", |out| Handler);
+fn main() -> Result<()> {
+    color_eyre::install()?;
+    let terminal = ratatui::init();
+    let app_result = ui::App::new().run(terminal);
+    ratatui::restore();
+    app_result
 }
