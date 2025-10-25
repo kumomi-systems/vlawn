@@ -12,32 +12,27 @@ pub use state::*;
 
 use serde::{Deserialize, Serialize};
 
-// #[derive(Serialize, Deserialize, Debug)]
-// pub struct Hierarchy(Vec<Peer>);
-
-// impl Hierarchy {
-//     pub fn new() -> Self {
-//         Hierarchy(Vec::new())
-//     }
-// }
-
-// pub type Counter = u64;
-
-pub type Counter = u64;
-
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Hierarchy(Vec<Peer>);
 
 impl Hierarchy {
     pub fn new() -> Self {
         Self(vec![Peer::get_local()])
     }
+
+    pub fn push(&mut self, peer: Peer) {
+        self.0.push(peer);
+    }
+
+    pub fn next_leader(&mut self) -> Option<&Peer> {
+        self.0.pop();
+        self.0.first()
+    }
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Room {
     name: String,
-    counter: Counter,
     hierarchy: Hierarchy,
 }
 
@@ -45,7 +40,6 @@ impl Room {
     pub fn new() -> Self {
         Self {
             name: crate::admin::room::random_room_name(),
-            counter: 0,
             hierarchy: Hierarchy::new(),
         }
     }

@@ -15,4 +15,8 @@ impl Peer {
             addr: IpAddr::V4(crate::ip::get_local_ipv4()),
         }
     }
+
+    pub fn addr(&self) -> &IpAddr {
+        &self.addr
+    }
 }

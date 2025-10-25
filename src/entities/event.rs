@@ -12,7 +12,7 @@ pub enum Event {
     Timeout,
     Message(Message, u32),
 
-    JoinRecv(Sender),
+    Open(Sender),
     JoinSend(IpAddr),
 
     StartRoom,

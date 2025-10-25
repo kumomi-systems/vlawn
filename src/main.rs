@@ -32,7 +32,7 @@ fn main() {
             listen("0.0.0.0:57185", |out| {
                 println!("new connection");
                 let connection_id = out.connection_id();
-                events_tx.send(Event::JoinRecv(out)).unwrap();
+                events_tx.send(Event::Open(out)).unwrap();
                 Handler::new(events_tx.clone(), connection_id)
             })
             .expect("listener failed");
