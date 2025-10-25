@@ -1,4 +1,4 @@
-use std::{net::IpAddr, str::FromStr};
+use std::{net::IpAddr, str::FromStr, time::Duration};
 
 use crate::entities::{Event as OurEvent, ForwardPayload, Handler, Hierarchy, StateManager};
 use color_eyre::Result;
@@ -205,65 +205,68 @@ impl App {
             terminal.draw(|frame| self.draw(frame))?;
 
             // read an input event (keyboard or mouse)
-            match event::read()? {
-                Event::Key(key) => match self.input_mode {
-                    InputMode::Normal => match key.code {
-                        KeyCode::Up => {
-                            // scroll up one line in the messages view
-                            if let Some(area) = self.messages_area {
-                                let inner = area.height.saturating_sub(2) as usize;
-                                if inner > 0 && self.messages_scroll > 0 {
-                                    self.messages_scroll = self.messages_scroll.saturating_sub(1);
+            if let Ok(true) = event::poll(Duration::from_millis(10)) {
+                match event::read()? {
+                    Event::Key(key) => match self.input_mode {
+                        InputMode::Normal => match key.code {
+                            KeyCode::Up => {
+                                // scroll up one line in the messages view
+                                if let Some(area) = self.messages_area {
+                                    let inner = area.height.saturating_sub(2) as usize;
+                                    if inner > 0 && self.messages_scroll > 0 {
+                                        self.messages_scroll =
+                                            self.messages_scroll.saturating_sub(1);
+                                    }
                                 }
                             }
-                        }
-                        KeyCode::Down => {
-                            // scroll down one line in the messages view
-                            if let Some(area) = self.messages_area {
-                                let inner = area.height.saturating_sub(2) as usize;
-                                let hist_len = self.manager.history().len();
-                                if inner > 0 && hist_len > inner {
-                                    let max_start = hist_len - inner;
-                                    self.messages_scroll =
-                                        (self.messages_scroll + 1).min(max_start);
+                            KeyCode::Down => {
+                                // scroll down one line in the messages view
+                                if let Some(area) = self.messages_area {
+                                    let inner = area.height.saturating_sub(2) as usize;
+                                    let hist_len = self.manager.history().len();
+                                    if inner > 0 && hist_len > inner {
+                                        let max_start = hist_len - inner;
+                                        self.messages_scroll =
+                                            (self.messages_scroll + 1).min(max_start);
+                                    }
                                 }
                             }
-                        }
-                        // KeyCode::Char('e') | KeyCode::Tab => {
-                        KeyCode::Tab => {
-                            self.input_mode = InputMode::Editing;
-                        }
-                        // KeyCode::Char('q') | KeyCode::Esc => {
-                        KeyCode::Esc => {
-                            // disable mouse capture and raw mode before exiting
-                            crossterm::execute!(
-                                std::io::stdout(),
-                                crossterm::event::DisableMouseCapture
-                            )?;
-                            crossterm::terminal::disable_raw_mode()?;
-                            return Ok(());
-                        }
-                        _ => {}
+                            // KeyCode::Char('e') | KeyCode::Tab => {
+                            KeyCode::Tab => {
+                                self.input_mode = InputMode::Editing;
+                            }
+                            // KeyCode::Char('q') | KeyCode::Esc => {
+                            KeyCode::Esc => {
+                                // disable mouse capture and raw mode before exiting
+                                crossterm::execute!(
+                                    std::io::stdout(),
+                                    crossterm::event::DisableMouseCapture
+                                )?;
+                                crossterm::terminal::disable_raw_mode()?;
+                                return Ok(());
+                            }
+                            _ => {}
+                        },
+                        InputMode::Editing if key.kind == KeyEventKind::Press => match key.code {
+                            KeyCode::Enter => self.submit_message(),
+                            KeyCode::Char(to_insert) => self.enter_char(to_insert),
+                            KeyCode::Backspace => self.delete_char(),
+                            KeyCode::Delete => self.delete_forward(),
+                            KeyCode::Left => self.move_cursor_left(),
+                            KeyCode::Right => self.move_cursor_right(),
+                            // KeyCode::Esc | KeyCode::Tab => self.input_mode = InputMode::Normal,
+                            KeyCode::Tab => self.input_mode = InputMode::Normal,
+                            _ => {}
+                        },
+                        InputMode::Editing => {}
                     },
-                    InputMode::Editing if key.kind == KeyEventKind::Press => match key.code {
-                        KeyCode::Enter => self.submit_message(),
-                        KeyCode::Char(to_insert) => self.enter_char(to_insert),
-                        KeyCode::Backspace => self.delete_char(),
-                        KeyCode::Delete => self.delete_forward(),
-                        KeyCode::Left => self.move_cursor_left(),
-                        KeyCode::Right => self.move_cursor_right(),
-                        // KeyCode::Esc | KeyCode::Tab => self.input_mode = InputMode::Normal,
-                        KeyCode::Tab => self.input_mode = InputMode::Normal,
-                        _ => {}
-                    },
-                    InputMode::Editing => {}
-                },
-                Event::Mouse(me) => {
-                    // store the mouse event and let draw() handle the widget-level logic
-                    self.last_mouse_event = Some(me);
+                    Event::Mouse(me) => {
+                        // store the mouse event and let draw() handle the widget-level logic
+                        self.last_mouse_event = Some(me);
+                    }
+                    // Ignore other event types
+                    _ => {}
                 }
-                // Ignore other event types
-                _ => {}
             }
 
             while let Ok(event) = self.events_rx.try_recv() {
