@@ -1,3 +1,5 @@
+mod ip;
+
 fn main() {
-    println!("Hello, world!");
+  println!("{:?}", ip::get_local_ipv4());
 }
