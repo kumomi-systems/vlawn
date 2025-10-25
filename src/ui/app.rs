@@ -201,7 +201,6 @@ impl App {
         }
 
         loop {
-            log::info!("loop!");
             // draw and capture the latest areas for hit-testing
             terminal.draw(|frame| self.draw(frame))?;
 
