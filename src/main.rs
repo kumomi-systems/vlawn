@@ -10,5 +10,5 @@ use entities::{Event, Handler};
 
 fn main() {
     let (events_tx, events_rx) = unbounded::<Event>();
-    listen("localhost:5432", |out| Handler);
+    // listen("localhost:5432", |out| Handler);
 }

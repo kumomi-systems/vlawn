@@ -1,5 +1,15 @@
 use super::{Counter, Event, Hierarchy, Message};
 
+pub struct StateManager {
+    state: State,
+}
+
+impl StateManager {
+    pub fn handle(self, event: Event) -> State {
+        todo!()
+    }
+}
+
 pub enum State {
     Initial,
     Discover(DiscoverState),
@@ -7,12 +17,6 @@ pub enum State {
     Admin(AdminState),
     Member(MemberState),
     Leaving,
-}
-
-impl State {
-    pub fn handle(self, event: Event) -> State {
-        todo!()
-    }
 }
 
 pub struct DiscoverState {}
