@@ -1,14 +1,16 @@
 mod event;
+mod handler;
 mod message;
 mod peer;
 mod state;
 
-use serde::{Deserialize, Serialize};
+pub use event::*;
+pub use handler::*;
+pub use message::*;
+pub use peer::*;
+pub use state::*;
 
-use event::*;
-use message::*;
-use peer::*;
-use state::*;
+use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize)]
 pub struct Hierarchy(Vec<Peer>);
