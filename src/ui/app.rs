@@ -1,13 +1,13 @@
-use color_eyre::Result;
+use color_eyre::{owo_colors::OwoColorize, Result};
 use ratatui::{
     crossterm::event::{
         self, Event, KeyCode, KeyEventKind, MouseButton, MouseEvent, MouseEventKind,
     },
-    layout::Rect,
-    layout::{Constraint, Layout, Position},
+    layout::{Constraint, Layout, Position, Rect},
     style::{Color, Modifier, Style, Stylize},
+    symbols,
     text::{Line, Span, Text},
-    widgets::{Block, List, ListItem, Paragraph},
+    widgets::{Block, BorderType, Borders, List, ListItem, Paragraph},
     DefaultTerminal, Frame,
 };
 
@@ -21,8 +21,12 @@ pub struct App {
     input_mode: InputMode,
     /// History of recorded messages
     messages: Vec<String>,
+    /// List of members in the chatroom (displayed alongside messages)
+    members: Vec<String>,
     /// Last computed area for messages (used for mouse click detection)
     messages_area: Option<Rect>,
+    /// Last computed area for members (right-hand column)
+    members_area: Option<Rect>,
     /// Last computed area for input (used for mouse click detection)
     input_area: Option<Rect>,
     /// Last mouse event captured (handled inside draw at widget level)
@@ -37,13 +41,15 @@ pub enum InputMode {
 }
 
 impl App {
-    pub const fn new() -> Self {
+    pub fn new() -> Self {
         Self {
             input: String::new(),
             input_mode: InputMode::Normal,
             messages: Vec::new(),
+            members: vec!["alice".into(), "bob".into(), "carol".into(), "dave".into()],
             character_index: 0,
             messages_area: None,
+            members_area: None,
             input_area: None,
             last_mouse_event: None,
             messages_scroll: 0,
@@ -129,6 +135,11 @@ impl App {
     }
 
     fn submit_message(&mut self) {
+        if self.input.trim().is_empty() {
+            self.input.clear();
+            self.reset_cursor();
+            return;
+        }
         self.messages.push(self.input.clone());
         self.input.clear();
         self.reset_cursor();
@@ -177,14 +188,12 @@ impl App {
                                 }
                             }
                         }
-                        KeyCode::Char('e') => {
-                            self.input_mode = InputMode::Editing;
-                        }
+                        // KeyCode::Char('e') | KeyCode::Tab => {
                         KeyCode::Tab => {
-                            // Toggle to editing mode
                             self.input_mode = InputMode::Editing;
                         }
-                        KeyCode::Char('q') | KeyCode::Esc => {
+                        // KeyCode::Char('q') | KeyCode::Esc => {
+                        KeyCode::Esc => {
                             // disable mouse capture and raw mode before exiting
                             crossterm::execute!(
                                 std::io::stdout(),
@@ -202,7 +211,8 @@ impl App {
                         KeyCode::Delete => self.delete_forward(),
                         KeyCode::Left => self.move_cursor_left(),
                         KeyCode::Right => self.move_cursor_right(),
-                        KeyCode::Esc | KeyCode::Tab => self.input_mode = InputMode::Normal,
+                        // KeyCode::Esc | KeyCode::Tab => self.input_mode = InputMode::Normal,
+                        KeyCode::Tab => self.input_mode = InputMode::Normal,
                         _ => {}
                     },
                     InputMode::Editing => {}
@@ -218,41 +228,66 @@ impl App {
     }
 
     fn draw(&mut self, frame: &mut Frame) {
+        let fgcolor = Color::Indexed(229);
+        let bgcolor = Color::Indexed(235);
+        let brightgreen = Color::Indexed(40);
+
+        let outer_block = Block::bordered()
+            .border_type(BorderType::Double)
+            .title("arcane".magenta().italic())
+            .title("memory".cyan().italic())
+            .title("hoping".red().italic())
+            .title(Line::from(" vlawn ").right_aligned().green().bold())
+            .fg(fgcolor)
+            .bg(bgcolor);
+        let outer_area = frame.area();
+
+        frame.render_widget(outer_block.clone(), outer_area);
+
+        let inner_area = outer_block.inner(outer_area);
+
         let vertical = Layout::vertical([
             Constraint::Length(1),
-            Constraint::Min(1),
+            Constraint::Min(4),
             Constraint::Length(3),
         ]);
-        let [help_area, messages_area, input_area] = vertical.areas(frame.area());
+        let [instructions_area, focus_area, input_area] = vertical.areas(inner_area);
+
+        let horizontal_info = Layout::horizontal([Constraint::Length(40), Constraint::Fill(0)]);
+        let [help_area, grass_top] = horizontal_info.areas(instructions_area);
+
+        let horizontal = Layout::horizontal([Constraint::Fill(0), Constraint::Length(20)]);
+        let [messages_area, members_area] = horizontal.areas(focus_area);
 
         // store areas for hit-testing by the event loop
         self.messages_area = Some(messages_area);
+        self.members_area = Some(members_area);
         self.input_area = Some(input_area);
 
         let (msg, style) = match self.input_mode {
             InputMode::Normal => (
                 vec![
                     "Press ".into(),
-                    "q".bold(),
-                    " or ".into(),
+                    // "q".bold(),
+                    // " or ".into(),
                     "Esc".bold(),
                     " to exit, ".into(),
-                    "e".bold(),
-                    " or ".into(),
+                    // "e".bold(),
+                    // " or ".into(),
                     "Tab".bold(),
-                    " to start editing.".bold(),
+                    " to start typing.".into(),
                 ],
-                Style::default().add_modifier(Modifier::RAPID_BLINK),
+                Style::default().add_modifier(Modifier::SLOW_BLINK),
             ),
             InputMode::Editing => (
                 vec![
                     "Press ".into(),
-                    "Esc".bold(),
-                    " or ".into(),
+                    // "Esc".bold(),
+                    // " or ".into(),
                     "Tab".bold(),
-                    " to stop editing, ".into(),
+                    " to stop typing, ".into(),
                     "Enter".bold(),
-                    " to record the message".into(),
+                    " to send.".into(),
                 ],
                 Style::default(),
             ),
@@ -260,6 +295,13 @@ impl App {
         let text = Text::from(Line::from(msg)).patch_style(style);
         let help_message = Paragraph::new(text);
         frame.render_widget(help_message, help_area);
+
+        let grass_message: Paragraph<'_> = Paragraph::new(
+            Line::from("\\|/\\|/.,.,\\(/,,..,.,\\|/\\)/\\)/,,,\\,/..,.//(.,,.,\\.)")
+                .right_aligned()
+                .fg(brightgreen),
+        );
+        frame.render_widget(grass_message, grass_top);
 
         // Handle scroll events (mouse wheel) that were captured by the event loop
         if let Some(me) = &self.last_mouse_event {
@@ -315,9 +357,20 @@ impl App {
                 })
                 .collect()
         };
-        let messages_block = Block::bordered().title("Messages");
+
+        let messages_block = Block::bordered().title("Messages".bold());
         let messages_widget = List::new(visible_messages).block(messages_block.clone());
         frame.render_widget(messages_widget, messages_area);
+
+        // Render members list in the right hand column
+        let members_items: Vec<ListItem> = self
+            .members
+            .iter()
+            .map(|m| ListItem::new(Line::from(Span::raw(m.clone()))))
+            .collect(); // TODO if is admin
+        let members_block = Block::bordered().title("Members".bold());
+        let members_widget = List::new(members_items).block(members_block.clone());
+        frame.render_widget(members_widget, members_area);
 
         // Widget-level mouse handling for messages/input
         if let Some(me) = &self.last_mouse_event {
@@ -338,11 +391,21 @@ impl App {
             }
         }
 
-        let input_block = Block::bordered().title("Input");
+        let bottom_border_set = symbols::border::Set {
+            horizontal_bottom: "෴",
+            // horizontal_bottom: "^",
+            // horizontal_bottom: "\"",
+            ..symbols::border::PLAIN
+        };
+
+        let input_block = Block::bordered()
+            // .borders(Borders::TOP | Borders::LEFT | Borders::RIGHT)
+            .border_set(bottom_border_set)
+            .title("Input".bold()); // ෴🌱﹌♒︎﹏
         let input = Paragraph::new(self.input.as_str())
             .style(match self.input_mode {
                 InputMode::Normal => Style::default(),
-                InputMode::Editing => Style::default().fg(Color::Yellow),
+                InputMode::Editing => Style::default().fg(Color::LightGreen),
             })
             .block(input_block.clone());
         frame.render_widget(input, input_area);
