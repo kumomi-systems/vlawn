@@ -201,6 +201,7 @@ impl App {
         }
 
         loop {
+            log::info!("loop!");
             // draw and capture the latest areas for hit-testing
             terminal.draw(|frame| self.draw(frame))?;
 
@@ -266,7 +267,7 @@ impl App {
                 _ => {}
             }
 
-            while let Ok(event) = self.events_rx.recv() {
+            while let Ok(event) = self.events_rx.try_recv() {
                 log::info!("Received event: {event:?}");
                 self.manager.handle(event);
             }
