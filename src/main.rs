@@ -29,7 +29,7 @@ fn main() {
         .name("websocket server".into())
         .spawn(move || {
             println!("websocket server started");
-            listen("127.0.0.1:57185", |out| {
+            listen("0.0.0.0:57185", |out| {
                 println!("new connection");
                 let connection_id = out.connection_id();
                 events_tx.send(Event::JoinRecv(out)).unwrap();
