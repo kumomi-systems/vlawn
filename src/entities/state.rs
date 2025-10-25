@@ -23,24 +23,30 @@ impl StateManager {
         match (&mut self.state, event) {
             (State::Initial, Event::StartRoom) => self.state = State::Admin(AdminState::new()),
             (State::Initial, Event::JoinSend(addr)) => {
-                let endpoint = format!("ws://{addr}:57185");
-                connect(endpoint, |out| {
-                    let msg = Message::new(Payload::JoinReq(self.peer.clone()));
-                    let msg_vec = to_allocvec(&msg).unwrap();
-                    out.send(msg_vec).unwrap();
+                let msg = Message::new(Payload::JoinReq(self.peer.clone()));
+                let msg_vec = to_allocvec(&msg).unwrap();
+                let events_tx = self.events_tx.clone();
 
-                    self.events_tx.send(Event::Open(out.clone())).unwrap();
+                std::thread::Builder::new()
+                    .name("connect".into())
+                    .spawn(move || {
+                        connect(format!("ws://{addr}:57185"), |out| {
+                            events_tx.send(Event::Open(out.clone())).unwrap();
+                            out.send(msg_vec.clone()).unwrap();
 
-                    Handler::new(self.events_tx.clone(), out.connection_id())
-                })
-                .unwrap();
+                            Handler::new(events_tx.clone(), out.connection_id())
+                        })
+                        .unwrap();
+                    })
+                    .unwrap();
             }
             (State::Connect(state), Event::Message(msg, _con_id)) => match msg.payload {
                 Payload::Sync(room) => {
                     self.state = State::Member(MemberState {
                         room,
                         admin: state.admin.clone(),
-                    })
+                    });
+                    log::info!("Joined room!")
                 }
                 _ => panic!(),
             },

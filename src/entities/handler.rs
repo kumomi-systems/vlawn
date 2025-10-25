@@ -23,7 +23,9 @@ impl WsHandler for Handler {
         let WsMessage::Binary(bin) = ws_msg else {
             unimplemented!("Expected binary message");
         };
+
         let msg: Message = from_bytes(&bin).unwrap();
+        log::info!("Received message: {msg:?}");
 
         self.events_tx
             .send(Event::Message(msg, self.connection_id))

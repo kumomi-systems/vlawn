@@ -28,9 +28,9 @@ fn main() {
     std::thread::Builder::new()
         .name("websocket server".into())
         .spawn(move || {
-            println!("websocket server started");
+            log::info!("Websocket server started");
             listen("0.0.0.0:57185", |out| {
-                println!("new connection");
+                log::info!("New connection");
                 let connection_id = out.connection_id();
                 events_tx.send(Event::Open(out)).unwrap();
                 Handler::new(events_tx.clone(), connection_id)
@@ -51,7 +51,7 @@ fn main() {
 
     loop {
         while let Ok(event) = events_rx.recv() {
-            println!("received event: {event:?}");
+            log::info!("Received event: {event:?}");
             manager.handle(event);
         }
     }
