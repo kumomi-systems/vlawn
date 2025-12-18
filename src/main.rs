@@ -1,16 +1,10 @@
-mod admin;
-mod entities;
-mod ip;
-mod member;
-mod ui;
+mod core;
 
 use std::fs::File;
 
 use simplelog::{Config, WriteLogger};
 
-use color_eyre::Result;
-
-fn main() -> Result<()> {
+fn main() {
     let now = chrono::Local::now();
     WriteLogger::init(
         log::LevelFilter::Info,
@@ -18,10 +12,4 @@ fn main() -> Result<()> {
         File::create(format!("{}.log", now.format("%Y%m%y_%H%M%S"))).unwrap(),
     )
     .unwrap();
-
-    color_eyre::install()?;
-    let terminal = ratatui::init();
-    let app_result = ui::App::new().run(terminal);
-    ratatui::restore();
-    app_result
 }
