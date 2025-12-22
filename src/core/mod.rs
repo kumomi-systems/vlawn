@@ -7,7 +7,7 @@ pub mod state;
 
 pub use control::Control;
 pub use endpoint::Endpoint;
-pub use event::{Counter, Event};
+pub use event::{Counter, Event, EventType};
 pub use peer::Peer;
 pub use process::Process;
 pub use state::State;

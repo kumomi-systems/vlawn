@@ -14,25 +14,26 @@ pub type Counter = u64;
 pub struct Event {
     // The order of these fields is important for ordering events.
     // Order first by counter, then by sender ID as a tiebreaker.
-    counter: Counter,
-    sender_id: Uuid,
+    pub counter: Counter,
+    pub sender_id: Uuid,
 
     #[derivative(PartialEq = "ignore", PartialOrd = "ignore", Ord = "ignore")]
-    event_type: EventType,
+    pub event_type: EventType,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum EventType {
-    /// Assigns a new peer ID to a joining peer.
-    Welcome {
-        peers: Vec<Peer>,
-    },
-    Join {
-        new_peer: Peer,
-    },
-    Leave {
-        peer_id: Uuid,
-    },
+    /// Share network state with a newly joined peer.
+    Welcome { peers: Vec<Peer> },
+
+    /// Request to join the network as a new peer.
+    JoinRequest { peer: Peer },
+
+    /// A new peer has joined the network.
+    Joined { new_peer: Peer },
+
+    /// A peer has left the network.
+    Left { peer_id: Uuid },
 }
 
 impl Event {
@@ -44,15 +45,19 @@ impl Event {
         }
     }
 
-    pub fn sender_id(&self) -> Uuid {
-        self.sender_id
+    pub fn welcome(sender_id: Uuid, counter: Counter, peers: Vec<Peer>) -> Self {
+        Event::new(sender_id, counter, EventType::Welcome { peers })
     }
 
-    pub fn event_type(&self) -> &EventType {
-        &self.event_type
+    pub fn join_request(sender_id: Uuid, counter: Counter, peer: Peer) -> Self {
+        Event::new(sender_id, counter, EventType::JoinRequest { peer })
     }
 
-    pub fn counter(&self) -> Counter {
-        self.counter
+    pub fn joined(sender_id: Uuid, counter: Counter, new_peer: Peer) -> Self {
+        Event::new(sender_id, counter, EventType::Joined { new_peer })
+    }
+
+    pub fn left(sender_id: Uuid, counter: Counter, peer_id: Uuid) -> Self {
+        Event::new(sender_id, counter, EventType::Left { peer_id })
     }
 }
