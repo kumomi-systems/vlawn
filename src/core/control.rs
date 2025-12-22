@@ -8,13 +8,13 @@ pub enum Control {
     Host,
 
     /// Join a session through the given open connection.
-    Join(Sender),
+    Join { ws: Sender },
 
     /// A neighbouring process has opened a connection.
-    Open,
+    Open { ws: Sender },
 
     /// A neighbouring process has closed its connection.
-    Close,
+    Close { ws: Sender },
 
     /// A process has sent an event.
     Event(Event),

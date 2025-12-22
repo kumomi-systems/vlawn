@@ -1,7 +1,8 @@
 use derivative::Derivative;
+use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-#[derive(Derivative, Debug, Clone)]
+#[derive(Derivative, Debug, Clone, Serialize, Deserialize)]
 #[derivative(PartialEq, Eq)]
 pub struct Peer {
     id: Uuid,

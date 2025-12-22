@@ -1,6 +1,6 @@
 use crossbeam_channel::{Receiver as ChannelRx, Sender as ChannelTx};
 
-use super::{Control, Peer, State};
+use super::{Control, Event, Peer, State};
 
 pub struct Process {
     state: State,
@@ -24,28 +24,39 @@ impl Process {
         self.ctrl_tx.clone()
     }
 
-    pub fn submit_ctrl(&self, ctrl: Control) {
-        self.ctrl_tx.send(ctrl).unwrap();
+    pub fn submit_ctrl(&self, ctrl: Control) -> anyhow::Result<()> {
+        Ok(self.ctrl_tx.send(ctrl)?)
     }
 
-    pub fn step(&mut self) {
+    pub fn step(mut self) -> anyhow::Result<Process> {
         if let Ok(ctrl) = self.ctrl_rx.try_recv() {
-            self.state = Self::transition(self.state.clone(), ctrl);
+            self.state = Self::transition(self.state, ctrl)?;
         }
+        Ok(self)
     }
 
     /// Performs the state transition logic for the process.
-    fn transition(state: State, ctrl: Control) -> State {
-        log::info!("Transitioning state: {:?} + {:?}", state, ctrl);
-        match (&state, &ctrl) {
+    fn transition(state: State, ctrl: Control) -> anyhow::Result<State> {
+        log::debug!("Transitioning state: {:?} + {:?}", state, ctrl);
+        let new_state = match (state, ctrl) {
             (State::Init, Control::Host) => State::Active {
-                peer: Peer::new("peer"),
+                neighbours: vec![],
+                me: Peer::new("peer"),
                 counter: 0,
             },
-            _ => {
+            (State::Init, Control::Join { ws }) => {
+                // TODO: send request
+                State::Joining {
+                    neighbours: vec![ws],
+                    peers: vec![],
+                }
+            }
+            (state, ctrl) => {
                 log::warn!("Unhandled state transition: {:?} + {:?}", state, ctrl);
                 state
             }
-        }
+        };
+        log::debug!("New state: {:?}", new_state);
+        Ok(new_state)
     }
 }

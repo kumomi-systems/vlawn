@@ -1,4 +1,5 @@
 use derivative::Derivative;
+use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 use super::Peer;
@@ -8,7 +9,7 @@ use super::Peer;
 pub type Counter = u64;
 
 /// An event sent between peers.
-#[derive(Derivative, Debug, Clone)]
+#[derive(Derivative, Debug, Clone, Serialize, Deserialize)]
 #[derivative(PartialEq, Eq, PartialOrd, Ord)]
 pub struct Event {
     // The order of these fields is important for ordering events.
@@ -20,12 +21,18 @@ pub struct Event {
     event_type: EventType,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum EventType {
     /// Assigns a new peer ID to a joining peer.
-    Welcome(Uuid),
-    Join(Peer),
-    Leave(Uuid),
+    Welcome {
+        peers: Vec<Peer>,
+    },
+    Join {
+        new_peer: Peer,
+    },
+    Leave {
+        peer_id: Uuid,
+    },
 }
 
 impl Event {
